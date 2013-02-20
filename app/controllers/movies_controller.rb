@@ -2,8 +2,45 @@
 
 class MoviesController < ApplicationController
   def index
-    @movies = Movie.all
+
+	#redirect to previous session settings if new sort and ratings parameters aren't specified
+	if params[:sort].nil? && params[:ratings].nil? && (!session[:sort].nil? || !session[ratings].nil?)
+		flash.keep
+		redirect_to movies_path(:sort => session[:sort], :ratings => session[:ratings])
+	end
+
+	@sort = params[:sort]
+	@ratings = params[:ratings]
+
+	#default to all ratings
+	if @ratings.nil?
+		ratings = Movie.ratings
+	else
+		ratings = @ratings.keys
+	end
+
+	#making the all_ratings collection 
+	@all_ratings = Movie.ratings.inject(Hash.new) do |all_ratings, rating|
+          all_ratings[rating] = @ratings.nil? ? false : @ratings.has_key?(rating) 
+          all_ratings
+        end
+
+	#if the table should be sorted, it reorders the columns using the order method
+	unless @sort.nil?
+		@movies = Movie.order("#{@sort}").find_all_by_rating(ratings)
+	else
+		@movies = Movie.find_all_by_rating(ratings)
+	end
+
+	#save settings in session
+	session[:sort] = @sort
+	session[:ratings] = @ratings
   end
+
+
+
+
+
 
   def show
     id = params[:id]
